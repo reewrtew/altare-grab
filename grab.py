@@ -165,15 +165,25 @@ def main():
     last_note = ""
     created = False
     server_info = None
+    unverified_notified = False
 
     while time.monotonic() < deadline:
         attempt += 1
-        servers, status, _ = list_servers()
+        servers, status, data = list_servers()
         if servers:
             created = True
             server_info = servers[0]
             summary(f"第 {attempt} 轮发现服务器已存在：{json.dumps(server_info, ensure_ascii=False)[:800]}")
             break
+        if status == 403 and isinstance(data, dict) and data.get("code") == "EMAIL_UNVERIFIED":
+            if not unverified_notified:
+                msg = "账号邮箱未验证（EMAIL_UNVERIFIED），创建被拒。请到 1023684430@qq.com 点验证链接。"
+                summary(msg)
+                log(msg)
+                pushplus("Altare 需要验证邮箱", msg)
+                unverified_notified = True
+            time.sleep(INTERVAL)
+            continue
         if status not in (200, 0):
             log(f"attempt={attempt} GET servers -> HTTP {status}")
 
