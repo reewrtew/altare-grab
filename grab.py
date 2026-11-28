@@ -166,6 +166,7 @@ def main():
     created = False
     server_info = None
     unverified_notified = False
+    auth_notified = False
 
     while time.monotonic() < deadline:
         attempt += 1
@@ -182,6 +183,15 @@ def main():
                 log(msg)
                 pushplus("Altare 需要验证邮箱", msg)
                 unverified_notified = True
+            time.sleep(INTERVAL)
+            continue
+        if status in (401, 403):
+            if not auth_notified:
+                msg = f"Altare 会话已失效（GET servers -> HTTP {status}），接力无法继续。请在本机运行 altr login，再把新的 ALTARE_TOKEN 写回仓库 Secrets。"
+                summary(msg)
+                log(msg)
+                pushplus("Altare 令牌失效，需要重新登录", msg)
+                auth_notified = True
             time.sleep(INTERVAL)
             continue
         if status not in (200, 0):
@@ -207,6 +217,15 @@ def main():
             if servers:
                 server_info = servers[0]
             break
+        if code in (401, 403):
+            if not auth_notified:
+                msg = f"Altare 会话已失效（POST create -> HTTP {code}），接力无法继续。请在本机运行 altr login，再把新的 ALTARE_TOKEN 写回仓库 Secrets。"
+                summary(msg)
+                log(msg)
+                pushplus("Altare 令牌失效，需要重新登录", msg)
+                auth_notified = True
+            time.sleep(INTERVAL)
+            continue
         if note != last_note:
             log(f"attempt={attempt} POST create -> HTTP {code} {note}")
             last_note = note
